@@ -1,0 +1,72 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            build-dir: build
+            exe: build/Release/Dots_and_Boxes.exe
+            artifact: Dots-and-Boxes-windows
+          - os: macos-14
+            build-dir: build
+            exe: build/Dots_and_Boxes.app
+            artifact: Dots-and-Boxes-macos
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.7.*"
+          cache: true
+
+      - name: Configure
+        run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Bundle Qt (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          windeployqt --release "build\Release\Dots_and_Boxes.exe"
+          Compress-Archive -Path "build\Release\*" -DestinationPath "Dots-and-Boxes-windows.zip"
+
+      - name: Bundle Qt (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          macdeployqt "build/Dots_and_Boxes.app" -dmg
+          mv build/Dots_and_Boxes.dmg .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            Dots-and-Boxes-windows.zip
+            Dots_and_Boxes.dmg
+          if-no-files-found: ignore
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Dots-and-Boxes-windows.zip
+            Dots_and_Boxes.dmg
