@@ -61,8 +61,9 @@ jobs:
       - name: Bundle Qt (macOS)
         if: runner.os == 'macOS'
         run: |
-          macdeployqt "build/Dots_and_Boxes.app" -dmg
-          mv build/Dots_and_Boxes.dmg .
+          macdeployqt "build/Dots_and_Boxes.app"
+          codesign --force --deep --sign - "build/Dots_and_Boxes.app"
+          hdiutil create -volname "Dots and Boxes" -srcfolder "build/Dots_and_Boxes.app" -ov -format UDZO "Dots_and_Boxes.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
