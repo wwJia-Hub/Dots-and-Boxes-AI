@@ -40,7 +40,9 @@ using Mixin = std::conditional_t<Bp, T, std::type_identity<T>>;
 template <typename T, Int Size>
 struct ArrayMixin {
   static_assert(Size > 0);
-  std::array<T, Size> Data;
+  // Value-initialize so MSVC's constexpr evaluator never sees an uninitialized std::array element
+  // (GCC/Clang tolerate default-initialized arrays that are written before read; MSVC does not).
+  std::array<T, Size> Data{};
 };
 
 struct FrontPointerMixin {
