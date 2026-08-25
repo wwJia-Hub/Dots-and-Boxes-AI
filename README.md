@@ -1,52 +1,52 @@
-# Dots and Boxes AIï¼ç¹æ ¼æ£ï¼
+# Dots and Boxes AI（点格棋）
 
-åºäº**å¹¶è¡èç¹å¡æ´æç´¢ + å°¾å±ååï¼double-crossï¼ç­ç¥**çç¹æ ¼æ£ AIï¼å¸¦ Qt6 å¾å½¢çé¢ï¼æ¯æäººæº / æºæºå¯¹æãèªå®ä¹æ£çå¤§å°ä¸å¯¹å¼åæ¹ã
+基于**并行蒙特卡洛搜索 + 尾局双叉（double-cross）策略**的点格棋 AI，带 Qt6 图形界面，支持人机 / 机机对战、自定义棋盘大小与对弈双方。
 
 ![demo](demo.png)
 
-## æ ¸å¿åæ°
+## 核心创新
 
-### å°¾å±ååï¼Double-Crossï¼ç­ç¥
+### 尾局双叉（Double-Cross）策略
 
-ç¹æ ¼æ£çèè´å¾å¾ç±å°¾å±å³å®ãä¼ ç» AI å¨å°¾å±éç¨è´ªå¿ç­ç¥ï¼éå°é¾å°±å¨é¨æ¿å®ï¼å´å°ãå¼é¾ä¸»å¨æãæ±æéç»å¯¹æãæ¬é¡¹ç®å¼å¥ Berlekamp æåºçååç­ç¥ï¼
+点格棋的胜负往往由尾局决定。传统 AI 在尾局采用贪心策略，遇到链就全部拿完，却将「开链主动权」拱手送给对手。本项目引入 Berlekamp 提出的双叉策略：
 
-- **æ¿é¾æ¶åå**ââåé¾æ¶åªæ¿ãé¾é¿ â 2ãæ ¼ï¼ææçä¸æå 2 æ ¼è®©åºï¼é¼å¯¹ææ¿èªå·±å¼ä¸ä¸é¾ï¼ä»èä¿ä½ãæ§å¶æãï¼
-- **å®å¨æ£ä¼å**ââå¼å± / ä¸­çåªä¸ä¸éæ ¼çãå®å¨æ£ãï¼
-- **è¢«è¿«å¼é¾æ¶å¼æç­é¾**ââå½ææç©ºè¾¹é½ä¼éæ ¼æ¶ï¼éæ©è®©å¯¹ææ¿å¾æå°çè¾¹ï¼Berlekamp æ åèµ°æ³ï¼ã
+- **拿链时双叉**——取链时只拿「链长 − 2」格，故意留下最后 2 格让出，逼对手替自己开下一链，从而保住「控制权」；
+- **安全棋优先**——开局 / 中盘只下不送格的「安全棋」；
+- **被迫开链时开最短链**——当所有空边都会送格时，选择让对手拿得最少的边（Berlekamp 标准走法）。
 
-è¿ä¸ç­ç¥è¢«æ¤å¥åºå± rolloutï¼æ´æ¡ `ImproveGreedyRobot â SimulationRobot â MonteCarloRobot â ParallelSearchRobot` å¨æ èªå¨åçï¼èç¹å¡æ´çèçä¼°è®¡æ´åç¡®ï¼æç»è½å­æ´ä½æ´å¼ºã
+这一策略被植入底层 rollout，整条 `ImproveGreedyRobot → SimulationRobot → MonteCarloRobot → ParallelSearchRobot` 全栈自动受益：蒙特卡洛的胜率估计更准确，最终落子整体更强。
 
-### ææ¯äº®ç¹
+### 技术亮点
 
-- **ç¼è¯ææ¨¡æ¿åæ£ç**ââC++23 ç¼è¯æåæ°åæ£çå°ºå¯¸ï¼è¿è¡æ¶é¶å¼éï¼
-- **Zobrist åå¸ + LRU ç¼å­**ââå¿«éå¤å®éå¤å±é¢ï¼ç¼å­æç´¢ç»æï¼é¿åéå¤è®¡ç®ï¼
-- **Intel TBB å¹¶è¡æç´¢**ââå¤çº¿ç¨å¹¶è¡èç¹å¡æ´ rolloutï¼ååå©ç¨å¤æ ¸æ§è½ï¼
-- **O(1) è½å­æ´æ°**ââå¢éç»´æ¤æ£çç¶æï¼æ¯ä¸æ­¥è½å­å³æ¶çæï¼
-- **Qt6 äº¤äºå¼å¾å½¢çé¢**ââæ¯æé¼ æ ç¹å»ç»çº¿ãå®æ¶åæ°ç»è®¡ãäººæº / æºæºå¯¹æã
+- **编译期模板化棋盘**——C++23 编译期参数化棋盘尺寸，运行时零开销；
+- **Zobrist 哈希 + LRU 缓存**——快速判定重复局面，缓存搜索结果，避免重复计算；
+- **Intel TBB 并行搜索**——多线程并行蒙特卡洛 rollout，充分利用多核性能；
+- **O(1) 落子更新**——增量维护棋盘状态，每一步落子即时生效；
+- **Qt6 交互式图形界面**——支持鼠标点击画线、实时分数统计、人机 / 机机对战。
 
-## åè½ç¹æ§
+## 功能特性
 
-- Qt6 äº¤äºå¼å¾å½¢çé¢
-- å¤çº§ AI å¯¹æï¼
-  - `GreedyRobot`ï¼è´ªå¿ï¼
-  - `ImproveGreedyRobot`ï¼æ¹è¿è´ªå¿ + å°¾å±ååï¼
-  - `SimulationRobot`ï¼ååæ¨¡æï¼
-  - `MonteCarloRobot`ï¼èç¹å¡æ´ï¼
-  - `ParallelSearchRobot`ï¼TBB å¹¶è¡æç´¢ï¼é»è®¤ï¼
-- å¯éç½®æ£çå¤§å°ï¼1â16ï¼
-- åæ°ç»è®¡ä¸æ¾ç¤º
-- æ£çå¯è§å
+- Qt6 交互式图形界面
+- 多级 AI 对手：
+  - `GreedyRobot`（贪心）
+  - `ImproveGreedyRobot`（改进贪心 + 尾局双叉）
+  - `SimulationRobot`（前向模拟）
+  - `MonteCarloRobot`（蒙特卡洛）
+  - `ParallelSearchRobot`（TBB 并行搜索，默认）
+- 可配置棋盘大小（1–16）
+- 分数统计与显示
+- 棋盘可视化
 
-## ç¯å¢è¦æ±
+## 环境要求
 
-- æ¯æ C++23 çç¼è¯å¨
-- Qt6ï¼CoreãGuiãWidgetsï¼
-- CMake 3.16 åä»¥ä¸
-- ä¾èµéè¿ git submodule æåï¼`deps/tbb`ã`deps/lru`ï¼ï¼æ éåç¬å®è£ TBB
+- 支持 C++23 的编译器
+- Qt6（Core、Gui、Widgets）
+- CMake 3.16 及以上
+- 依赖通过 git submodule 拉取（`deps/tbb`、`deps/lru`），无需单独安装 TBB
 
-## æå»º
+## 构建
 
-### åç½®ï¼åå§åå­æ¨¡å
+### 前置：初始化子模块
 
 ```bash
 git submodule update --init --recursive
@@ -60,7 +60,7 @@ cmake --build build --parallel --target Dots_and_Boxes
 ./build/Dots_and_Boxes
 ```
 
-ä¹å¯ç´æ¥è¿è¡ `bash build.sh`ï¼é»è®¤ Debugï¼ã
+也可直接运行 `bash build.sh`（默认 Debug）。
 
 ### Windows
 
@@ -70,63 +70,63 @@ cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release --parallel --target Dots_and_Boxes
 ```
 
-æç´æ¥è¿è¡ `build.bat`ãæåæç¬ç«å¯æ§è¡ç¨åºæ¶ï¼ç¨ Qt èªå¸¦ç `windeployqt` æ¶éè¿è¡åºï¼
+或直接运行 `build.bat`。打包成独立可执行程序时，用 Qt 自带的 `windeployqt` 收集运行库：
 
 ```bat
 windeployqt build\Release\Dots_and_Boxes.exe
 ```
 
-### é¢ç¼è¯å¯æ§è¡ç¨åº
+### 预编译可执行程序
 
-æ¬ä»åºæä¾ GitHub Actions èªå¨æå»ºï¼Windows `.exe`ãmacOS `.app`ï¼ï¼å¨æ `v*` æ ç­¾æ¶è§¦åï¼äº§ç©ä¸ä¼ å°å¯¹åº Releaseãè¯¦è§ [.github/workflows/release.yml](.github/workflows/release.yml)ã
+本仓库提供 GitHub Actions 自动构建（Windows `.exe`、macOS `.app`），在打 `v*` 标签时触发，产物上传到对应 Release。详见 [.github/workflows/release.yml](.github/workflows/release.yml)。
 
-## ä½¿ç¨
+## 使用
 
-### åºæ¬æä½
+### 基本操作
 
-1. å¯å¨ç¨åºï¼
-2. ç¨é¼ æ ç¹å»è¾¹çº¿æ¥ãç»çº¿ãï¼
-3. æ¡æ»¡åæ¡è¾¹å³å¾åï¼å¾ååç»§ç»­èµ°ï¼
-4. æç»å æ ¼å¤èè·èã
+1. 启动程序；
+2. 用鼠标点击边线来「画线」；
+3. 框满四条边即得分，得分后继续走；
+4. 最终占格多者获胜。
 
-### å½ä»¤è¡åæ°
+### 命令行参数
 
-| éé¡¹ | ç­ | é¿ | è¯´æ | é»è®¤ |
+| 选项 | 短 | 长 | 说明 | 默认 |
 | --- | --- | --- | --- | --- |
-| æ£çå¤§å° | `-s` | `--boardsize` | 1â16 | 6 |
-| ç©å®¶ 1 | `-p1` | `--player1` | ç©å®¶ç±»å | robot |
-| ç©å®¶ 2 | `-p2` | `--player2` | ç©å®¶ç±»å | robot |
+| 棋盘大小 | `-s` | `--boardsize` | 1–16 | 6 |
+| 玩家 1 | `-p1` | `--player1` | 玩家类型 | robot |
+| 玩家 2 | `-p2` | `--player2` | 玩家类型 | robot |
 
-ç©å®¶ç±»ååå¼ï¼`human`ã`GreedyRobot`ã`ImproveGreedyRobot`ã`SimulationRobot`ã`MonteCarloRobot`ã`ParallelSearchRobot`ï¼`robot` ç­ä»·äº `ParallelSearchRobot`ï¼ã
+玩家类型取值：`human`、`GreedyRobot`、`ImproveGreedyRobot`、`SimulationRobot`、`MonteCarloRobot`、`ParallelSearchRobot`（`robot` 等价于 `ParallelSearchRobot`）。
 
 ```bash
-# é»è®¤è®¾ç½®
+# 默认设置
 ./Dots_and_Boxes
 
-# 10x10 æ£ç
+# 10x10 棋盘
 ./Dots_and_Boxes --boardsize 10
 
-# ç©å®¶ 1 æ¯äººç±»ï¼ç©å®¶ 2 ç¨èç¹å¡æ´
+# 玩家 1 是人类，玩家 2 用蒙特卡洛
 ./Dots_and_Boxes --player1 human --player2 MonteCarloRobot
 ```
 
-## é¡¹ç®ç»æ
+## 项目结构
 
 ```
 Dots-and-Boxes/
-âââ .github/workflows/     # CIï¼ç¼è¯ + åå¸æå
-âââ deps/                  # å­æ¨¡åï¼tbbãlru
-âââ src/
-â   âââ robot/             # AI å®ç°ï¼Greedy/ImproveGreedy/Simulation/MonteCarlo/ParallelSearchï¼
-â   âââ frontend/          # Qt6 çé¢ï¼MainWindowãå Canvasï¼
-â   âââ Board.h            # ç¼è¯ææ¨¡æ¿æ£ç + Zobrist åå¸
-â   âââ Model.h            # Box / Edge / Dot æ°æ®æ¨¡å
-âââ main.cpp               # ç¨åºå¥å£
-âââ CMakeLists.txt
-âââ build.sh / build.bat
-âââ demo.png
+├── .github/workflows/     # CI：编译 + 发布打包
+├── deps/                  # 子模块：tbb、lru
+├── src/
+│   ├── robot/             # AI 实现（Greedy/ImproveGreedy/Simulation/MonteCarlo/ParallelSearch）
+│   ├── frontend/          # Qt6 界面（MainWindow、各 Canvas）
+│   ├── Board.h            # 编译期模板棋盘 + Zobrist 哈希
+│   └── Model.h            # Box / Edge / Dot 数据模型
+├── main.cpp               # 程序入口
+├── CMakeLists.txt
+├── build.sh / build.bat
+└── demo.png
 ```
 
-## è®¸å¯åè®®
+## 许可协议
 
-[MIT åè®®](LICENSE)
+[MIT 协议](LICENSE)
