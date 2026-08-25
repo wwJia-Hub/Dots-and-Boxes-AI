@@ -1,195 +1,148 @@
-# Dots and Boxes
+# Dots and Boxes AI（点格棋）
 
-A sophisticated implementation of the classic Dots and Boxes game with multiple AI strategies and a Qt-based graphical user interface.
+基于**并行蒙特卡洛搜索 + 尾局双叉（double-cross）策略**的点格棋 AI，带 Qt6 图形界面，支持人机 / 机机对战、自定义棋盘大小与对弈双方。
 
-## Features
+![demo](demo.png)
 
-- Interactive graphical interface using Qt6
-- Multiple AI opponents with different strategies:
-  - GreedyRobot
-  - ImproveGreedyRobot
-  - SimulationRobot
-  - MonteCarloRobot
-  - ParallelSearchRobot
-- Configurable game settings
-- Score tracking and display
-- Visual representation of the game board
-- LRU cache optimization for AI move evaluation
+> 本项目 fork 自 [HuXin0817/Dots-and-Boxes](https://github.com/HuXin0817/Dots-and-Boxes)（MIT 协议，原作者 Xin Hu），在此之上新增了尾局双叉策略。核心改动见下文「算法改进」。
 
-## Requirements
+---
 
-- C++23 compatible compiler
-- Qt6 (Core, Gui, Widgets)
-- CMake 3.16 or higher
-- Intel TBB (Threading Building Blocks) for parallel processing
+## 算法改进（本项目相对原版的核心创新）
 
-## Build Instructions
+原版的 AI 栈是 `ParallelSearchRobot → MonteCarloRobot → SimulationRobot → ImproveGreedyRobot`，底层 rollout 策略只有「能拿格就拿、否则下安全棋」，**完全没有实现点格棋的链 / 环（chains & loops）尾局理论**。而点格棋的胜负恰恰是在尾局决定的。
 
-### macOS
+在尾局，正确的下法非常反直觉：**故意少拿 2 格逼对手开下一链**——这就是 Berlekamp 提出的「双叉（double-cross）」。原版会一路贪心拿到底、把「开链主动权」拱手送人，因此对懂尾局的对手会系统性输分。
+
+本项目在 `ImproveGreedyRobot::SearchOne`（整条机器人链共享的 rollout 策略）中补上了链规则：
+
+1. **安全棋优先**——开局 / 中盘只下不送格的「安全棋」；
+2. **被迫开链时开最短链**——当所有空边都会送格时，选让对手拿得最少的边（Berlekamp 的「标准走法」）；
+3. **拿链时双叉**——拿链只取「链长 − 2」格，最后 2 格故意让出，逼对手替自己开下一链，从而保住「控制权」。
+
+因为只改动了底层这一处，`SimulationRobot`、`MonteCarloRobot`、`ParallelSearchRobot` **全栈自动受益**：rollout 不再在尾局送分，蒙特卡洛的胜率估计随之变准，最终落子整体变强。
+
+### 相比原版的优势
+
+| 维度 | 说明 |
+| --- | --- |
+| **尾局棋力** | 补上了原版缺失的双叉策略，尾局不再贪心送格，对懂尾局的对手不再被动 |
+| **改动集中** | 一处底层策略改动，全栈机器人共享收益，维护成本低 |
+| **保留原有优势** | 编译期模板化棋盘、Zobrist 哈希、O(1) 落子、LRU 缓存、Intel TBB 并行搜索、Qt6 界面全部保留 |
+
+---
+
+## 功能特性
+
+- Qt6 交互式图形界面
+- 多级 AI 对手：
+  - `GreedyRobot`（贪心）
+  - `ImproveGreedyRobot`（改进贪心 + 尾局双叉）
+  - `SimulationRobot`（前向模拟）
+  - `MonteCarloRobot`（蒙特卡洛）
+  - `ParallelSearchRobot`（TBB 并行搜索，默认）
+- 可配置棋盘大小（1–16）
+- 分数统计与显示
+- 棋盘可视化
+
+## 环境要求
+
+- 支持 C++23 的编译器
+- Qt6（Core、Gui、Widgets）
+- CMake 3.16 及以上
+- 依赖通过 git submodule 拉取（`deps/tbb`、`deps/lru`），无需单独安装 TBB
+
+## 构建
+
+### 前置：初始化子模块
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd Dots-and-Boxes
-
-# Create build directory
-mkdir build
-cd build
-
-# Configure with CMake
-cmake ..
-
-# Build the project
-cmake --build .
-
-# Run the game
-./Dots_and_Boxes
+git submodule update --init --recursive
 ```
 
-### Other Platforms
-
-The project can be built on other platforms with Qt6 support. Follow similar steps for your specific platform.
-
-## Usage
-
-### Basic Usage
-
-1. Launch the game application
-2. Use the mouse to click on edges to claim them
-3. Complete boxes by claiming all four edges to score points
-4. The player with the most boxes at the end wins
-
-### Command Line Arguments
-
-The game supports the following command line arguments:
-
-| Option        | Short | Long          | Description           | Default |
-| ------------- | ----- | ------------- | --------------------- | ------- |
-| Board Size    | `-s`  | `--boardsize` | Set board size (1-16) | 6       |
-| Player 1 Type | `-p1` | `--player1`   | Set type of player 1  | robot   |
-| Player 2 Type | `-p2` | `--player2`   | Set type of player 2  | robot   |
-
-### Environment Variables
-
-The following environment variables can be used to set default values:
-
-| Variable     | Description               |
-| ------------ | ------------------------- |
-| `BOARD_SIZE` | Default board size (1-16) |
-| `PLAYER1`    | Default type for player 1 |
-| `PLAYER2`    | Default type for player 2 |
-
-Environment variables take precedence over command line defaults but can be overridden by explicit command line arguments.
-
-#### Player Type Values
-
-| Value                 | Description                         |
-| --------------------- | ----------------------------------- |
-| `human`               | Human player                        |
-| `GreedyRobot`         | Basic robot with simple strategy    |
-| `ImproveGreedyRobot`  | Improved greedy strategy            |
-| `SimulationRobot`     | Simulation-based strategy           |
-| `MonteCarloRobot`     | Monte Carlo simulation strategy     |
-| `ParallelSearchRobot` | Parallel search strategy            |
-| `robot`               | Equivalent to `ParallelSearchRobot` |
-
-#### Example Usage
+### macOS / Linux
 
 ```bash
-# Start with default settings
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel --target Dots_and_Boxes
+./build/Dots_and_Boxes
+```
+
+也可直接运行 `bash build.sh`（默认 Debug）。
+
+### Windows
+
+```bat
+git submodule update --init --recursive
+cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --parallel --target Dots_and_Boxes
+```
+
+或直接运行 `build.bat`。打包成独立可执行程序时，用 Qt 自带的 `windeployqt` 收集运行库：
+
+```bat
+windeployqt build\Release\Dots_and_Boxes.exe
+```
+
+### 预编译可执行程序
+
+本仓库提供 GitHub Actions 自动构建（Windows `.exe`、macOS `.app`），在打 `v*` 标签时触发，产物上传到对应 Release。详见 [.github/workflows/release.yml](.github/workflows/release.yml)。
+
+## 使用
+
+### 基本操作
+
+1. 启动程序；
+2. 用鼠标点击边线来「画线」；
+3. 框满四条边即得分，得分后继续走；
+4. 最终占格多者获胜。
+
+### 命令行参数
+
+| 选项 | 短 | 长 | 说明 | 默认 |
+| --- | --- | --- | --- | --- |
+| 棋盘大小 | `-s` | `--boardsize` | 1–16 | 6 |
+| 玩家 1 | `-p1` | `--player1` | 玩家类型 | robot |
+| 玩家 2 | `-p2` | `--player2` | 玩家类型 | robot |
+
+玩家类型取值：`human`、`GreedyRobot`、`ImproveGreedyRobot`、`SimulationRobot`、`MonteCarloRobot`、`ParallelSearchRobot`（`robot` 等价于 `ParallelSearchRobot`）。
+
+```bash
+# 默认设置
 ./Dots_and_Boxes
 
-# Start with a 10x10 board
+# 10x10 棋盘
 ./Dots_and_Boxes --boardsize 10
 
-# Start with human player 1 and MonteCarloRobot player 2
+# 玩家 1 是人类，玩家 2 用蒙特卡洛
 ./Dots_and_Boxes --player1 human --player2 MonteCarloRobot
-
-# Start with medium board size and both players as robots
-./Dots_and_Boxes -s 8 -p1 ImproveGreedyRobot -p2 SimulationRobot
 ```
 
-## Project Structure
+## 项目结构
 
 ```
 Dots-and-Boxes/
-├── .github/            # GitHub workflows
-│   └── workflows/
-│       └── macos-build.yml
-├── deps/               # External dependencies
-│   ├── .gitignore
-│   ├── CMakeLists.txt
-├── frontend/           # GUI-related files
-│   ├── BaseCanvas.cpp
-│   ├── BaseCanvas.h
-│   ├── BoxCanvas.cpp
-│   ├── BoxCanvas.h
-│   ├── CMakeLists.txt
-│   ├── DotCanvas.cpp
-│   ├── DotCanvas.h
-│   ├── EdgeCanvas.cpp
-│   ├── EdgeCanvas.h
-│   ├── Frontend.cpp
-│   ├── Frontend.h
-│   ├── MainWindow.cpp
-│   └── MainWindow.h
-├── src/                # Source files
-│   ├── Robot/          # AI implementations
-│   │   ├── CachedRobot.h
-│   │   ├── GreedyRobot.h
-│   │   ├── ImproveGreedyRobot.h
-│   │   ├── MonteCarloRobot.h
-│   │   ├── ParallelSearchRobot.h
-│   │   └── SimulationRobot.h
-│   ├── Board.h
-│   ├── Common.h
-│   ├── Iterable.h
-│   ├── Logging.h
-│   ├── Model.h
-│   ├── PlayerType.h
-│   └── Robot.h
-├── .clang-format       # Code formatting configuration
-├── .gitignore          # Git ignore file
-├── .gitmodules         # Git submodules configuration
-├── CMakeLists.txt      # Build configuration
-├── LICENSE             # License file
-├── README.md           # This file
-├── build.sh            # Build script
-├── demo.png            # Game demo screenshot
-├── format.sh           # Code formatting script
-└── main.cpp            # Entry point
+├── .github/workflows/     # CI：编译 + 发布打包
+├── deps/                  # 子模块：tbb、lru
+├── src/
+│   ├── robot/             # AI 实现（Greedy/ImproveGreedy/Simulation/MonteCarlo/ParallelSearch）
+│   ├── frontend/          # Qt6 界面（MainWindow、各 Canvas）
+│   ├── Board.h            # 编译期模板棋盘 + Zobrist 哈希
+│   └── Model.h            # Box / Edge / Dot 数据模型
+├── main.cpp               # 程序入口
+├── CMakeLists.txt
+├── build.sh / build.bat
+└── demo.png
 ```
 
-## AI Strategies
+## 许可协议
 
-1. **GreedyRobot**: Follows basic game rules without advanced planning
-2. **ImproveGreedyRobot**: Implements a basic search algorithm to evaluate moves
-3. **SimulationRobot**: Enhanced version with better move evaluation
-4. **MonteCarloRobot**: Uses Monte Carlo simulation for move selection
-5. **ParallelSearchRobot**: Leverages multi-core processing for faster search
+本项目沿用原项目的 [MIT 协议](LICENSE)。
 
-All robot strategies use **CachedRobot** for performance optimization, which caches move evaluations using an LRU cache to reduce redundant computations.
+- 基础代码版权：© 2025 Xin Hu <huxin0817.hx@gmail.com>
+- 尾局双叉等改动：© 2025 wwJia
 
-## Technical Details
+## 致谢
 
-- **Language**: C++23
-- **GUI Framework**: Qt6
-- **Parallel Processing**: Intel TBB (Threading Building Blocks)
-- **Build System**: CMake
-- **JSON Library**: nlohmann_json
-- **Logging Library**: spdlog
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
-
-Copyright (c) 2025 Xin Hu <huxin0817.hx@gmail.com>
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Acknowledgments
-
-- Qt6 for the graphical user interface
-- Intel TBB for parallel processing capabilities
+- 原作者 [HuXin0817/Dots-and-Boxes](https://github.com/HuXin0817/Dots-and-Boxes) 及其高性能棋盘 / 机器人框架
+- Qt6、Intel TBB、CMake
