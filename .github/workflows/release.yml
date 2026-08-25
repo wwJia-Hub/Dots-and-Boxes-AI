@@ -35,6 +35,16 @@ jobs:
           version: "6.7.*"
           cache: true
 
+      # Apple Clang does not implement the C++23 features this project relies on
+      # (static_assert(false) in templates, static constexpr locals in constexpr functions).
+      # Use Homebrew LLVM, which fully supports C++23.
+      - name: Install LLVM (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install llvm
+          echo "CC=$(brew --prefix llvm)/bin/clang" >> "$GITHUB_ENV"
+          echo "CXX=$(brew --prefix llvm)/bin/clang++" >> "$GITHUB_ENV"
+
       - name: Configure
         run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
 
