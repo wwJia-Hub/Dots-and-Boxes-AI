@@ -34,6 +34,9 @@ foreach(BoardSize RANGE 1 ${MaxBoardSize})
 endforeach()
 
 qt_add_executable("${PROJECT_NAME}" main.cpp)
+if(APPLE)
+  set_target_properties("${PROJECT_NAME}" PROPERTIES MACOSX_BUNDLE TRUE)
+endif()
 target_compile_definitions("${PROJECT_NAME}" PRIVATE __MaxBoardSize__=${MaxBoardSize})
 target_link_libraries(${PROJECT_NAME} PRIVATE
   Qt6::Core
