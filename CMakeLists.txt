@@ -19,6 +19,11 @@ endif()
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
+# Build only the TBB library, not its test/examples suites (those take many minutes and are
+# irrelevant to this project).
+set(TBB_TEST OFF CACHE BOOL "" FORCE)
+set(TBB_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(TBB_STRICT OFF CACHE BOOL "" FORCE)
 add_subdirectory(deps/tbb)
 include_directories("${CMAKE_SOURCE_DIR}/deps/lru")
 

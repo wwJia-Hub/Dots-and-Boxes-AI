@@ -3,10 +3,12 @@
 #include <algorithm>
 #include <cassert>
 #include <chrono>
+#include <compare>
 #include <cstdint>
 #include <functional>
 #include <numeric>
 #include <print>
+#include <type_traits>
 
 #include "Iterable.h"
 #include "Model.h"
@@ -363,7 +365,12 @@ constexpr std::strong_ordering BoardImpl<Config>::operator<=>(const Other& other
   return std::strong_ordering::equal;
 }
 
+#ifndef _MSC_VER
+// Empty-base optimization collapses the Mixin<false, T> = std::type_identity<T> bases into
+// BasicMixin's tail padding on GCC/Clang. MSVC lays out these empty bases differently, so this
+// exact-size check is skipped there (correctness is unaffected; only a few bytes of padding differ).
 static_assert(sizeof(BoardImpl<0>) == sizeof(BasicMixin));
+#endif
 
 template <std::int64_t Config>
 using Board = BoardImpl<FixedConfig(Config)>;

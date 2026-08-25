@@ -7,8 +7,13 @@
 #define JOIN(x, y) CAT(x, y)
 #define __detail__ JOIN(JOIN(JOIN(__detail__, __BoardSize__), x), __BoardSize__)
 
+#ifdef _MSC_VER
+#define LIKELY(expr) (expr)
+#define UNLIKELY(expr) (expr)
+#else
 #define LIKELY(expr) __builtin_expect(!!(expr), 1)
 #define UNLIKELY(expr) __builtin_expect(!!(expr), 0)
+#endif
 
 namespace dab::__detail__ {
 

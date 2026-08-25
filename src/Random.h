@@ -45,12 +45,12 @@ constexpr std::uint64_t ZobristHash::xorshift64(std::uint64_t state) {
 class Random {
  public:
   Random();
-  constexpr Random(std::uint64_t seed) { generator.seed(seed); };
+  Random(std::uint64_t seed) { generator.seed(seed); };
 
   template <typename T>
-  constexpr T Range(T min, T max);
+  T Range(T min, T max);
   template <typename Iterable>
-  constexpr const auto& Choice(const Iterable& data);
+  const auto& Choice(const Iterable& data);
 
  private:
   std::mt19937_64 generator;
@@ -63,12 +63,12 @@ inline Random::Random() {
 }
 
 template <typename T>
-constexpr T Random::Range(T min, T max) {
+T Random::Range(T min, T max) {
   return std::uniform_int_distribution<T>{min, max}(generator);
 }
 
 template <typename Iterable>
-constexpr const auto& Random::Choice(const Iterable& data) {
+const auto& Random::Choice(const Iterable& data) {
   assert(!data.Empty());
   return data.At(Range(0, data.Size() - 1));
 }
